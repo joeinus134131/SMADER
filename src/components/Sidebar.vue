@@ -14,12 +14,12 @@ defineProps({
       <h2>SMADER</h2>
     </div>
     <ul class="sidebar-menu">
-      <li><a href="#" class="menu-item active"><i class="fa-solid fa-chart-pie"></i> Dashboard</a></li>
-      <li><a href="#" class="menu-item"><i class="fa-solid fa-bed-pulse"></i> Data Pasien</a></li>
-      <li><a href="#" class="menu-item"><i class="fa-solid fa-list-check"></i> Data Kode</a></li>
-      <li><a href="#" class="menu-item"><i class="fa-solid fa-user-doctor"></i> Data Dokter</a></li>
-      <li><a href="#" class="menu-item"><i class="fa-solid fa-user-nurse"></i> Data Perawat</a></li>
-      <li style="margin-top: 40px;"><a href="#" class="menu-item"><i class="fa-solid fa-circle-info"></i> Bantuan</a></li>
+      <li><router-link to="/" class="menu-item" active-class="active" exact-active-class="active"><i class="fa-solid fa-chart-pie"></i> Dashboard</router-link></li>
+      <li><router-link to="/data-pasien" class="menu-item" active-class="active"><i class="fa-solid fa-bed-pulse"></i> Data Pasien</router-link></li>
+      <li><router-link to="/data-kode" class="menu-item" active-class="active"><i class="fa-solid fa-list-check"></i> Data Kode</router-link></li>
+      <li><router-link to="/data-dokter" class="menu-item" active-class="active"><i class="fa-solid fa-user-doctor"></i> Data Dokter</router-link></li>
+      <li><router-link to="/data-perawat" class="menu-item" active-class="active"><i class="fa-solid fa-user-nurse"></i> Data Perawat</router-link></li>
+      <li style="margin-top: 40px;"><router-link to="/bantuan" class="menu-item" active-class="active"><i class="fa-solid fa-circle-info"></i> Bantuan</router-link></li>
     </ul>
   </aside>
 </template>

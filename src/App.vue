@@ -2,7 +2,6 @@
 import { ref } from 'vue'
 import Sidebar from './components/Sidebar.vue'
 import TopBar from './components/TopBar.vue'
-import Dashboard from './components/Dashboard.vue'
 
 const isSidebarOpen = ref(false)
 
@@ -16,7 +15,7 @@ const toggleSidebar = () => {
   
   <main id="main-content">
     <TopBar @toggle-sidebar="toggleSidebar" />
-    <Dashboard />
+    <router-view />
     
     <footer>
       &copy; 2026 SMADER (Smart Patient Movement Detector). Dipersembahkan oleh <a href="#">UROTERA TEAM</a> - Institut Teknologi Sumatera.

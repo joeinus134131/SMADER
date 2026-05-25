@@ -1,41 +1,112 @@
 <script setup>
+import { ref, onMounted, onUnmounted, computed } from 'vue'
 import StatCard from './StatCard.vue'
 import SignalItem from './SignalItem.vue'
+import ToastNotification from './ToastNotification.vue'
 
-const stats = [
+const stats = ref([
   { title: 'Pasien Aktif', value: 124, icon: 'fa-solid fa-bed', colorClass: 'icon-blue' },
-  { title: 'Sinyal Hari Ini', value: 38, icon: 'fa-solid fa-bell-concierge', colorClass: 'icon-green' },
-  { title: 'Panggilan Darurat', value: 2, icon: 'fa-solid fa-triangle-exclamation', colorClass: 'icon-red' },
+  { title: 'Sinyal Hari Ini', value: 0, icon: 'fa-solid fa-bell-concierge', colorClass: 'icon-green' },
+  { title: 'Panggilan Darurat', value: 0, icon: 'fa-solid fa-triangle-exclamation', colorClass: 'icon-red' },
   { title: 'Kesiapan Sistem', value: '99%', icon: 'fa-solid fa-microchip', colorClass: 'icon-purple' }
-]
+])
 
-const signals = [
-  {
-    icon: 'fa-solid fa-hand',
-    title: 'Ruang 102 - Kode 4 (Darurat)',
-    description: 'Deteksi 5 jari. Bantuan dokter segera dibutuhkan.',
-    time: 'Baru saja',
-    isUrgent: true
-  },
-  {
-    icon: 'fa-solid fa-hand-pointer',
-    title: 'Ruang 205 - Kode 1 (Biasa)',
-    description: 'Deteksi 2 jari. Pasien meminta bantuan minum/makan.',
-    time: '10 min lalu',
-    isUrgent: false
-  },
-  {
-    icon: 'fa-solid fa-hand-peace',
-    title: 'Ruang 102 - Kode 2 (Menengah)',
-    description: 'Deteksi 3 jari. Pasien membutuhkan bantuan ke toilet.',
-    time: '45 min lalu',
-    isUrgent: false
+const signals = ref([])
+let interval;
+
+// Notification state
+const toasts = ref([])
+let lastSignalsCount = -1
+
+// Pagination state
+const currentPage = ref(1)
+const itemsPerPage = 5
+
+const totalPages = computed(() => Math.ceil(signals.value.length / itemsPerPage))
+const paginatedSignals = computed(() => {
+  const start = (currentPage.value - 1) * itemsPerPage
+  return signals.value.slice(start, start + itemsPerPage)
+})
+
+const prevPage = () => {
+  if (currentPage.value > 1) currentPage.value--
+}
+const nextPage = () => {
+  if (currentPage.value < totalPages.value) currentPage.value++
+}
+
+const showToast = (message, type) => {
+  const id = Date.now() + Math.random()
+  toasts.value.push({ id, message, type })
+}
+
+const removeToast = (id) => {
+  toasts.value = toasts.value.filter(t => t.id !== id)
+}
+
+const fetchSignals = async () => {
+  try {
+    const res = await fetch('http://localhost:3000/api/signals');
+    const data = await res.json();
+    
+    // Sort descending by date
+    data.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+
+    // Map backend data to UI format
+    signals.value = data.map(signal => {
+      let icon = 'fa-solid fa-hand';
+      if (signal.code.fingerCount === 2) icon = 'fa-solid fa-hand-pointer';
+      if (signal.code.fingerCount === 3) icon = 'fa-solid fa-hand-peace';
+      
+      return {
+        id: signal.id,
+        icon: icon,
+        title: `Ruang ${signal.room.roomNumber} - Kode ${signal.code.fingerCount} (${signal.code.urgencyLevel})`,
+        description: `Deteksi ${signal.code.fingerCount} jari. ${signal.code.meaning}.`,
+        time: new Date(signal.createdAt).toLocaleTimeString(),
+        isUrgent: signal.code.urgencyLevel === 'High',
+        status: signal.status
+      };
+    });
+    
+    // Check for new signals
+    if (lastSignalsCount !== -1 && data.length > lastSignalsCount) {
+      const newSignal = signals.value[0]
+      showToast(newSignal.title + ' - ' + newSignal.description, newSignal.isUrgent ? 'error' : 'info')
+    }
+    lastSignalsCount = data.length
+    
+    // Update stats
+    stats.value[1].value = signals.value.length;
+    stats.value[2].value = signals.value.filter(s => s.isUrgent).length;
+    
+  } catch(e) {
+    console.error("Gagal mengambil data dari backend", e);
   }
-]
+}
+
+onMounted(() => {
+  fetchSignals();
+  interval = setInterval(fetchSignals, 2000); // Polling setiap 2 detik
+})
+
+onUnmounted(() => {
+  clearInterval(interval);
+})
 </script>
 
 <template>
   <div class="container">
+    
+    <!-- Toast Notifications -->
+    <ToastNotification 
+      v-for="toast in toasts" 
+      :key="toast.id" 
+      :message="toast.message" 
+      :type="toast.type" 
+      :onClose="() => removeToast(toast.id)"
+    />
+
     <div class="page-title">
       <h1>Overview Dashboard</h1>
       <p>Smart Patient Movement Detector Control Center</p>
@@ -59,19 +130,29 @@ const signals = [
       <div class="card">
         <div class="card-header">
           <h2 class="card-title">Sinyal Panggilan Terkini</h2>
-          <button class="btn"><i class="fa-solid fa-rotate-right"></i> Refresh</button>
+          <button class="btn" @click="fetchSignals"><i class="fa-solid fa-rotate-right"></i> Refresh</button>
         </div>
         
         <div class="signal-list">
           <SignalItem
-            v-for="(signal, index) in signals"
-            :key="index"
+            v-for="signal in paginatedSignals"
+            :key="signal.id"
             :icon="signal.icon"
             :title="signal.title"
             :description="signal.description"
             :time="signal.time"
             :isUrgent="signal.isUrgent"
           />
+          <div v-if="paginatedSignals.length === 0" style="text-align: center; color: var(--text-muted); padding: 20px;">
+            Belum ada sinyal hari ini.
+          </div>
+        </div>
+
+        <!-- Pagination Controls -->
+        <div class="pagination" v-if="totalPages > 1">
+          <button class="page-btn" @click="prevPage" :disabled="currentPage === 1"><i class="fa-solid fa-chevron-left"></i> Prev</button>
+          <span>Page {{ currentPage }} of {{ totalPages }}</span>
+          <button class="page-btn" @click="nextPage" :disabled="currentPage === totalPages">Next <i class="fa-solid fa-chevron-right"></i></button>
         </div>
       </div>
 
@@ -189,6 +270,43 @@ const signals = [
   display: flex;
   flex-direction: column;
   gap: 16px;
+}
+
+/* Pagination */
+.pagination {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+.page-btn {
+  background: white;
+  border: 1px solid var(--border);
+  padding: 8px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-family: inherit;
+  color: var(--text-main);
+  transition: 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.page-btn:hover:not(:disabled) {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.page-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background: var(--bg-main);
 }
 
 @media (max-width: 992px) {
