@@ -15,3 +15,12 @@ __pycache__/
 # IDEs and Editors
 .vscode/
 .idea/
+
+# Node/Vue Environment
+node_modules/
+dist/
+dist-ssr/
+.env
+.env.local
+.env.*.local
+
