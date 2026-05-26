@@ -46,7 +46,8 @@ const removeToast = (id) => {
 
 const fetchSignals = async () => {
   try {
-    const res = await fetch('http://localhost:3000/api/signals');
+    const apiUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
+    const res = await fetch(`${apiUrl}/signals`);
     const data = await res.json();
     
     // Sort descending by date
